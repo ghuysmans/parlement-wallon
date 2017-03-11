@@ -21,7 +21,12 @@ let (>>=) m f s =
   | Error e, s' -> Error e, s'
 
 let interesting_line l =
-  l="" || Str.string_match (Str.regexp "[A-Za-z]") l 0
+  l="" ||
+  try
+    ignore (Str.search_forward (Str.regexp "[A-Za-z]") l 0);
+    true
+  with Not_found ->
+    false
 
 let rec read_one source =
   try
