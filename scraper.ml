@@ -84,9 +84,18 @@ let read_if what how =
 let id x = x
 
 
-(*
- * passer dans un mode dès qu'on voit un truc spécial (arriérés...)
- * ignorer les chiffres (éventuellement 7- 1) seuls sur une ligne
- *)
+let p =
+  expect "PARLEMENT DE WALLONIE" read_nonempty id >>= fun () ->
+  read_join >>= fun commission ->
+  expect "CONVOCATION" read_nonempty id >>= fun () ->
+  expect "Date :" read_nonempty id >>= fun () ->
+  read_nonempty >>= fun date ->
+  expect "Heure :" read_nonempty id >>= fun () ->
+  expect "Lieu :" read_nonempty id >>= fun () ->
+  read_nonempty >>= fun lieu ->
+  read_nonempty >>= fun heure ->
+  read_if "HUIS-CLOS" read_nonempty >>= fun huisclos ->
+  print_endline (if huisclos then "Y" else "N");
+  return (print_endline heure)
 
-let () = run read_par |> List.iter print_endline
+let () = run p
