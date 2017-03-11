@@ -14,6 +14,7 @@ let fail_gobble e _ =
 
 let not_interested x l _ =
   Ok x, Reused l
+let oh_sorry = not_interested
 
 let (>>=) m f s =
   match m s with
