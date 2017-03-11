@@ -41,6 +41,15 @@ let rec read_one source =
   with End_of_file ->
     fail_gobble "EOF" Next_line
 
+let read_nonempty =
+  let rec f () =
+    read_one >>= fun l ->
+    if l = "" then
+      f ()
+    else
+      return l in
+  f ()
+
 let read_par =
   let rec f acc =
     read_one >>= fun l ->
@@ -50,10 +59,29 @@ let read_par =
       f (l :: acc) in
   f []
 
+let read_join =
+  read_par >>= fun x -> return (String.concat " " x)
+
 let run m =
   match m Next_line with
   | Ok x, _ -> x
   | Error e, _ -> failwith e
+
+let expect what how err =
+  how >>= fun that ->
+  if that = what then
+    return ()
+  else
+    fail_gobble ("expected " ^ err what)
+
+let read_if what how =
+  how >>= fun that ->
+  if that = what then
+    return true
+  else
+    oh_sorry false that
+
+let id x = x
 
 
 (*
