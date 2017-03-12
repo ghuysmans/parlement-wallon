@@ -98,6 +98,11 @@ let default_to d = function
   | Some x -> x
   | None -> d
 
+(* http://langref.org/ocaml/strings/reversing-a-string/reverse-characters *)
+let reverse str =
+  let l = Str.split (Str.regexp "") str in
+  List.fold_left (fun a b -> b ^ a) "" l
+
 
 let p =
   let extract_date_heure s =
@@ -131,15 +136,18 @@ let p =
     else
       fail_gobble "date/heure" in
   let extract_lieu_huisclos s =
-    let re = Str.regexp "Lieu *: *\\(.*\\)" in
-    if Str.string_match re s 0 then
-      let raw = Str.matched_group 1 s in
-      (* Damien: reverse match! *)
-      let re = Str.regexp "\\(.*\\) HUIS-CLOS$" in
-      if Str.string_match re raw 0 then
-        return (Str.matched_group 1 raw |> String.trim, true)
-      else
-        return (raw, false)
+    (* dark magic here, you're not supposed to understand this awoken *)
+    let re = Str.regexp "\\(SOLC-SIUH \\)?\\(.*\\) *: *ueiL$" in
+    let rev = reverse s in
+    if Str.string_match re rev 0 then
+      return (
+        Str.matched_group 2 rev |> String.trim |> reverse,
+        try
+          ignore (Str.matched_group 1 rev);
+          true
+        with Not_found ->
+          false
+      )
     else
       fail_gobble "lieu" in
   expect "PARLEMENT DE WALLONIE" read_nonempty id >>= fun () ->
