@@ -2,6 +2,7 @@ type s =
   | Reused of string
   | Next_line
 
+(* TODO keep the line number for better error messages *)
 type 'a t = s -> ('a, string) result * s
 
 
@@ -35,7 +36,7 @@ let rec read_one source =
       | Reused s -> s
       | Next_line -> read_line () in
     if interesting_line l then
-      return l Next_line
+      return (String.trim l) Next_line
     else
       read_one Next_line
   with End_of_file ->
@@ -83,19 +84,73 @@ let read_if what how =
 
 let id x = x
 
+let index l e =
+  let rec f i = function
+    | [] -> -1
+    | x :: t ->
+        if x = e then
+          i
+        else
+          f (i+1) t in
+  f 0 l
+
+let default_to d = function
+  | Some x -> x
+  | None -> d
+
 
 let p =
+  let extract_date_heure s =
+    let re = Str.regexp
+      ("Date *: *\\([^ 0-9]+ \\)?\\([0-9]+\\) \\([^ 0-9]+\\) " ^
+        "\\([0-9][0-9][0-9][0-9]\\) +" ^
+        "Heure *: *\\([0-9]+\\)h\\([0-9]+\\)?") in
+    let les_mois = ["janvier"; "février"; "mars"; "avril"; "mai"; "juin";
+      "juillet"; "août"; "septembre"; "octobre"; "novembre"; "décembre"] in
+    if Str.string_match re s 0 then
+      let mois = Str.matched_group 3 s in
+      if List.mem mois les_mois then
+        let min =
+          try
+            Str.matched_group 7 s |> int_of_string
+          with Invalid_argument _ ->
+            0 in
+        return (Unix.mktime {
+          Unix.tm_sec = 0;
+          tm_min = min;
+          tm_hour = Str.matched_group 5 s |> int_of_string;
+          tm_mday = Str.matched_group 2 s |> int_of_string;
+          tm_mon = index les_mois mois;
+          tm_year = (Str.matched_group 4 s |> int_of_string) - 1900;
+          tm_wday = -1;
+          tm_yday = -1;
+          tm_isdst = true;
+        })
+      else
+        fail_gobble "mois"
+    else
+      fail_gobble "date/heure" in
+  let extract_lieu_huisclos s =
+    let re = Str.regexp "Lieu *: *\\(.*\\)" in
+    if Str.string_match re s 0 then
+      let raw = Str.matched_group 1 s in
+      (* Damien: reverse match! *)
+      let re = Str.regexp "\\(.*\\) HUIS-CLOS$" in
+      if Str.string_match re raw 0 then
+        return (Str.matched_group 1 raw |> String.trim, true)
+      else
+        return (raw, false)
+    else
+      fail_gobble "lieu" in
   expect "PARLEMENT DE WALLONIE" read_nonempty id >>= fun () ->
   read_join >>= fun commission ->
   expect "CONVOCATION" read_nonempty id >>= fun () ->
-  expect "Date :" read_nonempty id >>= fun () ->
-  read_nonempty >>= fun date ->
-  expect "Heure :" read_nonempty id >>= fun () ->
-  expect "Lieu :" read_nonempty id >>= fun () ->
-  read_nonempty >>= fun lieu ->
-  read_nonempty >>= fun heure ->
-  read_if "HUIS-CLOS" read_nonempty >>= fun huisclos ->
-  print_endline (if huisclos then "Y" else "N");
-  return (print_endline heure)
+  read_nonempty >>= fun rawdate ->
+  extract_date_heure rawdate >>= fun (ts, tm) ->
+  read_nonempty >>= fun rawlieu ->
+  extract_lieu_huisclos rawlieu >>= fun (lieu, huisclos) ->
+  Printf.printf "comm=%s, ts=%f, lieu=%s, huisclos=%s\n"
+    commission ts lieu (if huisclos then "Y" else "N");
+  return ()
 
 let () = run p
