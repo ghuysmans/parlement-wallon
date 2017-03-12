@@ -75,12 +75,12 @@ let expect what how err =
   else
     fail_gobble ("expected " ^ err what)
 
-let read_if what how =
+let read_if cond how =
   how >>= fun that ->
-  if that = what then
-    return true
+  if cond that then
+    return (Some that)
   else
-    oh_sorry false that
+    oh_sorry None that
 
 let id x = x
 
@@ -104,7 +104,7 @@ let reverse str =
   List.fold_left (fun a b -> b ^ a) "" l
 
 
-let p =
+let meta =
   let extract_date_heure s =
     let re = Str.regexp
       ("Date *: *\\([^ 0-9]+ \\)?\\([0-9]+\\) \\([^ 0-9]+\\) " ^
@@ -161,4 +161,34 @@ let p =
     commission ts lieu (if huisclos then "Y" else "N");
   return ()
 
-let () = run p
+let contains needle haystack =
+  let re = Str.regexp_string needle in
+  try
+    ignore (Str.search_forward re haystack 0);
+    true
+  with Not_found ->
+    false
+
+let is_title t =
+  let re = Str.regexp "[^a-z]*$" in
+  Str.string_match re t 0
+
+let orgatravaux =
+  read_if (contains "ORGANISATION DES TRAVAUX") read_nonempty >>= function
+  | None -> return ()
+  | Some _ ->
+    let rec f acc =
+      read_if (fun x -> not (is_title x)) read_nonempty >>= function
+      | Some l -> f (l :: acc)
+      | None -> return (List.rev acc) in
+    f [] >>= fun l -> List.iter print_endline l; return ()
+
+
+(*
+let () = run (
+  orgatravaux >>= fun () ->
+  read_one >>= fun x ->
+  return (print_endline ("then: " ^ x))
+)
+*)
+let () = run (meta >>= fun () -> orgatravaux)

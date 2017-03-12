@@ -16,5 +16,5 @@ val read_par : string list t
 val read_join : string t
 
 val expect : 'a -> 'a t -> ('a -> string) -> unit t
-val read_if : string -> string t -> bool t
+val read_if : (string -> bool) -> string t -> string option t
 val id : 'a -> 'a
