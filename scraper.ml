@@ -169,22 +169,63 @@ let is_title t =
   let re = Str.regexp "[^a-z]+$" in
   Str.string_match re t 0
 
+let read_lines cond group =
+  let rec f all cur =
+    let gr () =
+      if List.length cur = 0 then
+        all
+      else
+        group cur :: all in
+    read_if cond read_one >>= function
+    | Some "" -> f (gr ()) []
+    | Some l -> f all (l :: cur)
+    | None -> return (List.rev (gr ())) in
+  f [] []
+
 let orgatravaux =
   read_if (contains "ORGANISATION DES TRAVAUX") read_nonempty >>= function
-  | None -> return ()
+  | None -> return []
+  | Some _ -> read_lines
+    (fun x -> not (is_title x))
+    (fun x -> String.concat " " (List.rev x))
+
+let clean_enum l =
+  let gr cur all =
+    if List.length cur = 0 then
+      all
+    else
+      String.concat " " (List.rev cur) :: all in
+  let f (cur, all) x =
+    if x.[0] = '-' then
+      [String.sub x 1 (String.length x - 1) |> String.trim], gr cur all
+    else
+      String.trim x :: cur, all in
+  let cur, all = List.fold_left f ([], []) l in
+  gr cur all
+
+
+let auditions =
+  read_if (contains "AUDITIONS") read_join >>= function
+  | None -> return []
   | Some _ ->
-    let rec f acc =
-      read_if (fun x -> not (is_title x)) read_nonempty >>= function
-      | Some l -> f (l :: acc)
-      | None -> return (List.rev acc) in
-    f [] >>= fun l -> List.iter print_endline l; return ()
+    read_if (fun x -> not (is_title x)) read_nonempty >>= function
+    | None -> return []
+    | Some _ ->
+      read_lines
+        (fun x -> not (contains "Audition de :" x))
+        (fun x -> String.concat " " (List.rev x)) >>= fun l ->
+      let sujet = List.hd l in
+      read_one >>= fun _ ->
+      read_lines ((<>) "") id >>= fun l ->
+      let qui = List.concat l |> clean_enum in
+      List.iter (fun x -> print_endline ("!" ^ x)) qui;
+      return []
 
 
-(*
+let () = List.iter print_endline (clean_enum ["-a"; "-b"; "bbb"])
 let () = run (
-  orgatravaux >>= fun () ->
-  read_one >>= fun x ->
-  return (print_endline ("then: " ^ x))
+  meta >>= fun () ->
+  orgatravaux >>= fun ot ->
+  auditions >>= fun au ->
+  return ()
 )
-*)
-let () = run (meta >>= fun () -> orgatravaux)
