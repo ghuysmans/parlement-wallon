@@ -153,12 +153,8 @@ let meta =
   expect "PARLEMENT DE WALLONIE" read_nonempty id >>= fun () ->
   read_join >>= fun commission ->
   expect "CONVOCATION" read_nonempty id >>= fun () ->
-  read_nonempty >>= fun rawdate ->
-  extract_date_heure rawdate >>= fun (ts, tm) ->
-  read_nonempty >>= fun rawlieu ->
-  extract_lieu_huisclos rawlieu >>= fun (lieu, huisclos) ->
-  Printf.printf "comm=%s, ts=%f, lieu=%s, huisclos=%s\n"
-    commission ts lieu (if huisclos then "Y" else "N");
+  read_nonempty >>= extract_date_heure >>= fun (ts, tm) ->
+  read_nonempty >>= extract_lieu_huisclos >>= fun (lieu, huisclos) ->
   return ()
 
 let contains needle haystack =
