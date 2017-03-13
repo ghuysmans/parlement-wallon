@@ -166,7 +166,7 @@ let contains needle haystack =
     false
 
 let is_title t =
-  let re = Str.regexp "[^a-z]*$" in
+  let re = Str.regexp "[^a-z]+$" in
   Str.string_match re t 0
 
 let orgatravaux =
