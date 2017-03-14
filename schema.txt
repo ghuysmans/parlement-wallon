@@ -1,0 +1,35 @@
+meta
+	commission
+	date, heure
+	lieu
+sections
+	orgatravaux
+		-	element
+	auditions
+		-	sujet
+			qui
+			rapporteur
+			activite
+	projets
+		-	description
+			auteurs?
+			rapporteur?
+			activites?
+	debats?
+	interps
+		-	theme
+			-	sujet
+				de
+				a
+	arrieres
+		- type
+			-	sujet
+				date
+				ref
+	composition
+		effectifs
+			-	nom
+				role?
+		suppleants
+			-	nom
+				role?
