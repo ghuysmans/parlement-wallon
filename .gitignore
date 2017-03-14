@@ -1,0 +1,4 @@
+*.swp
+*.pdf
+_build/
+*.byte
